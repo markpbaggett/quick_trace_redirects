@@ -1,10 +1,18 @@
-import oaitools, parsecsv, strformat, times, xmltools, strutils, sequtils
+import oaitools, parsecsv, strformat, times, xmltools, strutils, sequtils, csvtools, uuids
 
-type
-  TraceReport* = ref object
-    ## Type to report successes and failures
-    successes: seq[string]
-    failures: seq[string]
+
+type Redirect = object
+  a_type: string
+  hash: UUID
+  source: string
+  source_options: string
+  redirect: string
+  redirect_options: string
+  status: int
+
+
+proc newRedirect(source, destination: string): Redirect = 
+  return Redirect(a_type: "redirect", hash: genUUID(), source: source, source_options: "a:0:{}", redirect: destination, redirect_options: "a:1:{s:5:\"https\";b:1;}", status: 1)
 
 proc get_spaced_name(name: string): string =
   if name != "":
@@ -17,7 +25,7 @@ proc parse_data(response, element: string): seq[string] =
     xml_response = Node.fromStringE(response)
     results = $(xml_response // element)
   for node in split(results, '<'):
-    let value = node.replace("/", "").replace(fmt"{element}>", "")
+    let value = node.replace(fmt"/{element}", "").replace(fmt"{element}>", "")
     if len(value) > 0:
       result.add(value)
 
@@ -65,11 +73,11 @@ proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_reco
     if dc_location != -1:
       result.add(
         (
-          islandora_etds[islandora_titles.find(title)][1],
+          islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu", ""),
           digital_commons_records[dc_location][1]
         ))
     else:
-      result.add((islandora_etds[islandora_titles.find(title)][1], "Missing"))
+      result.add((islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu", ""), "Missing"))
 
 when isMainModule:
   let
