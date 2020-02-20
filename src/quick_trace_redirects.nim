@@ -55,25 +55,21 @@ proc get_islandora_etds(filename: string): seq[(string, string)] =
       )
   p.close
 
-proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_records: seq[(string, string)]): seq[int] =
+proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_records: seq[(string, string)]): seq[(string, string)] =
   let
     islandora_titles = islandora_etds.mapIt(it[0])
     digital_commons_titles = digital_commons_records.mapIt(it[0])
-  var
-    islandora_position = 0
-    digital_commons_position: int
   for title in islandora_titles:
-    result.add(digital_commons_titles.find(title))
-  # for islandora etd in islandora_etds.mapIt(it[0]):
-  #   for digital_commons_etd in digital_commons_records:
-  #     if islandora_etd == digital_commons_etd:
-  #       if islandora_etd ==
-
-  #   if etd[0] in digital_commons_records:
-  #     result.successes.add(etd[0])
-  #   else:
-  #     result.failures.add(etd[0])
-
+    let 
+      dc_location = digital_commons_titles.find(title)
+    if dc_location != -1:
+      result.add(
+        (
+          islandora_etds[islandora_titles.find(title)][1],
+          digital_commons_records[dc_location][1]
+        ))
+    else:
+      result.add((islandora_etds[islandora_titles.find(title)][1], "Missing"))
 
 when isMainModule:
   let
