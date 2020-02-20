@@ -1,4 +1,4 @@
-import oaitools, parsecsv, strformat, times, xmltools, strutils, sequtils, csvtools, uuids
+import oaitools, parsecsv, strformat, times, xmltools, strutils, sequtils, csvtools, uuids, argparse
 
 
 type Redirect = object
@@ -86,9 +86,27 @@ proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_reco
         )
 
 when isMainModule:
+  var
+    p = newParser("Quick Trace Redirects"):
+      option("-e", "--etd_type", help="Specify thesis or dissertation check. Defaults to thesis.", default="thesis", choices = @["thesis", "dissertation"])
+      option("-d", "--digital_commons_csv", help="The full path to your csv that was imported into Digital Commons.")
+      option("-o", "--output_path", help="Path to where you want to write your output.", default="migrated_etds_append.csv")
+    argv = commandLineParams()
+    opts = p.parse(argv)
   let
-    islandora_theses = get_islandora_etds("/home/mark/Documents/spring_2019/theses.csv")
-    theses = get_digital_commons_title_and_uris(get_new_records_from_digital_commons("publication:utk_gradthes"))
-    dissertations = get_digital_commons_title_and_uris(get_new_records_from_digital_commons("publication:utk_graddiss"))
-    theses_redirects = compare_islandora_digital_commons_etds(islandora_theses, theses)
-  theses_redirects.writeToCsv("test.csv", separator='|', quote='\'')
+    islandora_theses = get_islandora_etds(opts.digital_commons_csv)
+  case opts.etd_type
+  of "thesis":
+    let
+      etds_redirects = compare_islandora_digital_commons_etds(
+        islandora_theses,
+        get_digital_commons_title_and_uris(get_new_records_from_digital_commons("publication:utk_gradthes"))
+        )
+    etds_redirects.writeToCsv(opts.output_path, separator='|', quote='\'')
+  of "dissertation":
+    let
+      etds_redirects = compare_islandora_digital_commons_etds(
+        islandora_theses,
+        get_digital_commons_title_and_uris(get_new_records_from_digital_commons("publication:utk_graddis"))
+        )
+    etds_redirects.writeToCsv(opts.output_path, separator='|', quote='\'')
