@@ -12,4 +12,6 @@ bin           = @["quick_trace_redirects"]
 # Dependencies
 
 requires "nim >= 1.0.4"
-requires "oaitools >= 0.2.3"
+requires "oaitools >= 0.2.5"
+requires "csvtools >= 0.2.0"
+requires "uuids >= 0.1.10"
