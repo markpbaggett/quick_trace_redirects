@@ -3,7 +3,7 @@ import oaitools, parsecsv, strformat, times, xmltools, strutils, sequtils, csvto
 
 type Redirect = object
   a_type: string
-  hash: UUID
+  hash: string
   source: string
   source_options: string
   redirect: string
@@ -12,7 +12,7 @@ type Redirect = object
 
 
 proc newRedirect(source, destination: string): Redirect = 
-  return Redirect(a_type: "redirect", hash: genUUID(), source: source, source_options: "a:0:{}", redirect: destination, redirect_options: "a:1:{s:5:\"https\";b:1;}", status: 1)
+  return Redirect(a_type: "redirect", hash: $(genUUID()), source: source, source_options: "a:0:{}", redirect: destination, redirect_options: "a:1:{s:5:\"https\";b:1;}", status: 1)
 
 proc get_spaced_name(name: string): string =
   if name != "":
@@ -63,7 +63,7 @@ proc get_islandora_etds(filename: string): seq[(string, string)] =
       )
   p.close
 
-proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_records: seq[(string, string)]): seq[(string, string)] =
+proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_records: seq[(string, string)]): seq[Redirect] =
   let
     islandora_titles = islandora_etds.mapIt(it[0])
     digital_commons_titles = digital_commons_records.mapIt(it[0])
@@ -72,16 +72,23 @@ proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_reco
       dc_location = digital_commons_titles.find(title)
     if dc_location != -1:
       result.add(
-        (
+        newRedirect(
           islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu", ""),
           digital_commons_records[dc_location][1]
-        ))
+          )
+        )
     else:
-      result.add((islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu", ""), "Missing"))
+      result.add(
+        newRedirect(
+          islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu", ""),
+           "Missing"
+          )
+        )
 
 when isMainModule:
   let
     islandora_theses = get_islandora_etds("/home/mark/Documents/spring_2019/theses.csv")
     theses = get_digital_commons_title_and_uris(get_new_records_from_digital_commons("publication:utk_gradthes"))
     dissertations = get_digital_commons_title_and_uris(get_new_records_from_digital_commons("publication:utk_graddiss"))
-  echo compare_islandora_digital_commons_etds(islandora_theses, theses)
+    theses_redirects = compare_islandora_digital_commons_etds(islandora_theses, theses)
+  theses_redirects.writeToCsv("test.csv", separator='|', quote='\'')
