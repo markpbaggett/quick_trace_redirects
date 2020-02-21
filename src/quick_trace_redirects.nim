@@ -15,7 +15,7 @@ proc newRedirect(source, destination: string): Redirect =
   ## Constructs a redirect.
   return Redirect(a_type: "redirect", hash: $(genUUID()), source: source, source_options: "a:0:{}", redirect: destination, redirect_options: "a:1:{s:5:\"https\";b:1;}", status: 1)
 
-proc get_spaced_name(name: string): string =
+proc get_spaced_name*(name: string): string =
   ## Takes a name part and returns name part with expected spacing.
   if name != "":
     return fmt" {name}"
