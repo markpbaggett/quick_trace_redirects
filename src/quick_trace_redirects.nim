@@ -12,15 +12,18 @@ type Redirect = object
 
 
 proc newRedirect(source, destination: string): Redirect = 
+  ## Constructs a redirect.
   return Redirect(a_type: "redirect", hash: $(genUUID()), source: source, source_options: "a:0:{}", redirect: destination, redirect_options: "a:1:{s:5:\"https\";b:1;}", status: 1)
 
 proc get_spaced_name(name: string): string =
+  ## Takes a name part and returns name part with expected spacing.
   if name != "":
     return fmt" {name}"
   else:
     return name
 
 proc parse_data(response, element: string): seq[string] =
+  ## Basic proc to agnostically handle getting text values of a node in an xml response.
   let
     xml_response = Node.fromStringE(response)
     results = $(xml_response // element)
@@ -30,6 +33,7 @@ proc parse_data(response, element: string): seq[string] =
       result.add(value)
 
 proc get_new_records_from_digital_commons(oai_set: string): seq[string] =
+  ## Gets all records published in the past 3 months from a set in our instance of Digital Commons.
   echo fmt"{'\n'}Getting records from {oai_set}. {'\n'}{'\n'}"
   var
     oai_connection = newOaiRequest("https://trace.tennessee.edu/do/oai/", oai_set)
@@ -39,13 +43,15 @@ proc get_new_records_from_digital_commons(oai_set: string): seq[string] =
   records
 
 proc get_digital_commons_title_and_uris(digital_commons_records: seq[string]): seq[(string, string)] =
+  ## Processes a sequence of digital commons records and returns a sequence of tuples with the author and the link to the object.
   for record in digital_commons_records:
     let
-      title = parse_data(record, "dc:creator")[0]
+      creator = parse_data(record, "dc:creator")[0]
       identifier = parse_data(record, "dc:identifier")[0]
-    result.add((title, identifier))
+    result.add((creator, identifier))
 
 proc get_islandora_etds(filename: string): seq[(string, string)] =
+  ## Reads a CSV and returns a sequence of tuples with the author name and link to the object in Islandora.
   var p: CsvParser
   p.open(filename, separator = '|')
   p.readHeaderRow()
@@ -64,6 +70,7 @@ proc get_islandora_etds(filename: string): seq[(string, string)] =
   p.close
 
 proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_records: seq[(string, string)]): seq[Redirect] =
+  ## Compares a sequence of objects in Islandora to objects in Digital Commons and returns a sequence of Redirects.
   let
     islandora_titles = islandora_etds.mapIt(it[0])
     digital_commons_titles = digital_commons_records.mapIt(it[0])
