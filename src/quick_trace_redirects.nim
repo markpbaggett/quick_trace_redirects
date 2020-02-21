@@ -85,6 +85,16 @@ proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_reco
           )
         )
 
+proc compare_and_write_redirects(oai_set: string, output_path:string, theses: seq[(string, string)]): int =
+  ## Main procedure used to compare uris and write our csv.
+  let
+    etds_redirects = compare_islandora_digital_commons_etds(
+      theses,
+      get_digital_commons_title_and_uris(get_new_records_from_digital_commons(oai_set))
+      )
+  etds_redirects.writeToCsv(output_path, separator='|', quote='\'')
+  len(etds_redirects)
+
 when isMainModule:
   var
     p = newParser("Quick Trace Redirects"):
@@ -93,20 +103,14 @@ when isMainModule:
       option("-o", "--output_path", help="Path to where you want to write your output.", default="migrated_etds_append.csv")
     argv = commandLineParams()
     opts = p.parse(argv)
-  let
-    islandora_theses = get_islandora_etds(opts.digital_commons_csv)
-  case opts.etd_type
-  of "thesis":
+    total_redirects: int
+  if opts.digital_commons_csv != "":
     let
-      etds_redirects = compare_islandora_digital_commons_etds(
-        islandora_theses,
-        get_digital_commons_title_and_uris(get_new_records_from_digital_commons("publication:utk_gradthes"))
-        )
-    etds_redirects.writeToCsv(opts.output_path, separator='|', quote='\'')
-  of "dissertation":
-    let
-      etds_redirects = compare_islandora_digital_commons_etds(
-        islandora_theses,
-        get_digital_commons_title_and_uris(get_new_records_from_digital_commons("publication:utk_graddis"))
-        )
-    etds_redirects.writeToCsv(opts.output_path, separator='|', quote='\'')
+      islandora_theses = get_islandora_etds(opts.digital_commons_csv)
+    case opts.etd_type
+    of "thesis":
+      total_redirects = compare_and_write_redirects("publication:utk_gradthes", opts.output_path, islandora_theses)
+      echo fmt"{'\n'}Wrote {total_redirects} to {opts.output_path}.{'\n'}"
+    of "dissertation":
+      total_redirects = compare_and_write_redirects("publication:utk_graddis", opts.output_path, islandora_theses)
+      echo fmt"{'\n'}Wrote {total_redirects} to {opts.output_path}.{'\n'}"
