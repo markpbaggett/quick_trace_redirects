@@ -1,6 +1,9 @@
-name: Build and Test
+name: Release and Publish
 
-on: [push]
+on:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -27,3 +30,30 @@ jobs:
 
     - name: Run tests
       run: nimble test
+    
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Initial upload
+            - Generates a CSV minus the header with redirects from Islandora to Digital Commons
+            - Includes argument parsing
+            - Actually a test release
+          draft: false
+          prerelease: false
+    
+    - name: Upload Release Binary
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} 
+          asset_path: ./quick_trace_redirects
+          asset_name: ./quick_trace_redirects
+          asset_content_type: application/x-pie-executable
