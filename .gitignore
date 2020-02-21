@@ -1,3 +1,5 @@
 bin/*
 .vscode
 *.csv
+tests/tests
+quick_trace_redirects
