@@ -42,7 +42,7 @@ proc get_new_records_from_digital_commons(oai_set: string): seq[string] =
       "qdc", from_date=three_months_ago.format("yyyy-MM-dd"))
   records
 
-proc get_digital_commons_title_and_uris(digital_commons_records: seq[string]): seq[(string, string)] =
+proc get_digital_commons_title_and_uris*(digital_commons_records: seq[string]): seq[(string, string)] =
   ## Processes a sequence of digital commons records and returns a sequence of tuples with the author and the link to the object.
   for record in digital_commons_records:
     let
