@@ -2,7 +2,11 @@ Quick Trace Redirects
 =====================
 
 .. image:: https://github.com/markpbaggett/quick_trace_redirects/workflows/Build%20and%20Test/badge.svg
-  :alt: Github Build
+  :alt: Github Build and Test Badge
+  :width: 40%
+.. image:: https://github.com/markpbaggett/quick_trace_redirects/workflows/Release%20and%20Publish/badge.svg
+  :alt: Github Release and Publish Badge
+  :width: 40%
 
 An alternative to `trace migrater's <https://github.com/markpbaggett/trace_migrater>`_ redirect module. This is built around OAI-PMH instead of the Digital Commons frontend making it much faster.
 
