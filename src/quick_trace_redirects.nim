@@ -2,6 +2,7 @@ import oaitools, parsecsv, strformat, times, xmltools, strutils, sequtils, csvto
 
 
 type Redirect = object
+  ## This type captures all metadata for what we consider a redirect.  This is designed to work seamlessly with csvtools.
   a_type: string
   hash: string
   source: string
@@ -13,27 +14,70 @@ type Redirect = object
 
 proc newRedirect(source, destination: string): Redirect = 
   ## Constructs a redirect.
+  ##
+  ## Args:
+  ##
+  ##   `source`: A URI to the object in Islandora.
+  ##   `destination`: A URI to the object in Digital Commons.
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    let my_redirect = newRedirect(source="/islandora/object/utk.ir.td:12280", destination="https://trace.tennessee.edu/utk_gradthes/5482")
+  ##    doAssert typeof(my_redirect) is Redirect
+  ##
   return Redirect(a_type: "redirect", hash: $(genUUID()), source: source, source_options: "a:0:{}", redirect: destination, redirect_options: "a:1:{s:5:\"https\";b:1;}", status: 1)
 
 proc get_spaced_name*(name: string): string =
-  ## Takes a name part and returns name part with expected spacing.
+  ## Takes a name part as a string and returns a space then the name part if the string is not empty.
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    doAssert " Patrick" == get_spaced_name("Patrick")
+  ##    doAssert "" == get_spaced_name("")
+  ##
   if name != "":
     return fmt" {name}"
   else:
     return name
 
 proc parse_data(response, element: string): seq[string] =
-  ## Basic proc to agnostically handle getting text values of a node in an xml response.
+  ## Takes an XML doc as a string and an element name and returns the text values of the element name as a sequence of strings.
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    let xml_record = """
+  ##      <oai_dc:dc xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bepress.com/OAI/2.0/qualified-dublin-core/ https://resources.bepress.com/assets/xsd/oai_qualified_dc.xsd">
+  ##      <dc:title>My Sample ETD</dc:title>
+  ##      <dc:creator>Baggett, Mark Patrick</dc:creator>
+  ##      <dc:identifier>https://trace.tennessee.edu/utk_graddiss/99999999</dc:identifier>
+  ##      </oai_dc:dc>
+  ##      """
+  ##    doAssert @["https://trace.tennessee.edu/utk_graddiss/99999999"] == parse_data(xml_record, "dc:identifier")
+  ##
   let
     xml_response = Node.fromStringE(response)
     results = $(xml_response // element)
   for node in split(results, '<'):
-    let value = node.replace(fmt"/{element}", "").replace(fmt"{element}>", "")
+    let value = node.replace(fmt"/{element}>", "").replace(fmt"{element}>", "")
     if len(value) > 0:
       result.add(value)
 
 proc get_new_records_from_digital_commons(oai_set: string): seq[string] =
-  ## Gets all records published in the past 3 months from a set in our instance of Digital Commons.
+  ## Gets all records published in the past 3 months from a set in the UTK instance of Digital Commons as a sequence of strings.
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    let recent_dissertations = get_new_records_from_digital_commons("publication:utk_graddis")
+  ##    echo recent_dissertations
+  ##
   echo fmt"{'\n'}Getting records from {oai_set}. {'\n'}{'\n'}"
   var
     oai_connection = newOaiRequest("https://trace.tennessee.edu/do/oai/", oai_set)
@@ -42,8 +86,23 @@ proc get_new_records_from_digital_commons(oai_set: string): seq[string] =
       "qdc", from_date=three_months_ago.format("yyyy-MM-dd"))
   records
 
-proc get_digital_commons_title_and_uris*(digital_commons_records: seq[string]): seq[(string, string)] =
-  ## Processes a sequence of digital commons records and returns a sequence of tuples with the author and the link to the object.
+proc get_all_digital_commons_authors_and_uris*(digital_commons_records: seq[string]): seq[(string, string)] =
+  ## Takes a sequence of digital commons records and returns just the creator and identifier for each as a sequence of tuples with two string values.
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    let xml_record = """
+  ##      <oai_dc:dc xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.bepress.com/OAI/2.0/qualified-dublin-core/ https://resources.bepress.com/assets/xsd/oai_qualified_dc.xsd">			
+  ##      <dc:title>My Sample ETD</dc:title>
+  ##      <dc:creator>Baggett, Mark Patrick</dc:creator>
+  ##      <dc:identifier>https://trace.tennessee.edu/utk_graddiss/99999999</dc:identifier>
+  ##      </oai_dc:dc>
+  ##      """
+  ##    var dc_records = @[xml_record]
+  ##    doAssert @[("Baggett, Mark Patrick", "https://trace.tennessee.edu/utk_graddiss/99999999")] == get_all_digital_commons_authors_and_uris(dc_records)
+  ##
   for record in digital_commons_records:
     let
       creator = parse_data(record, "dc:creator")[0]
@@ -97,7 +156,7 @@ proc compare_and_write_redirects(oai_set: string, output_path:string, theses: se
   let
     etds_redirects = compare_islandora_digital_commons_etds(
       theses,
-      get_digital_commons_title_and_uris(get_new_records_from_digital_commons(oai_set))
+      get_all_digital_commons_authors_and_uris(get_new_records_from_digital_commons(oai_set))
       )
   etds_redirects.writeToCsv(output_path, separator='|', quote='\'')
   len(etds_redirects)
