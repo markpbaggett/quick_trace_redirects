@@ -31,6 +31,11 @@ jobs:
     - name: Run tests
       run: nimble test
     
+    - name: Read CHANGELOG
+      id: changelog
+      run: |
+        echo "::set-output name=body::$(cat CHANGELOG.md)"
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -39,11 +44,7 @@ jobs:
       with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
-          body: |
-            Initial upload
-            - Generates a CSV minus the header with redirects from Islandora to Digital Commons
-            - Includes argument parsing
-            - Actually a test release
+          body: ${{ steps.changelog.outputs.body }}
           draft: false
           prerelease: false
     
