@@ -49,8 +49,11 @@ suite "Test Reading Digital Commons Data":
       xml_records: seq[string]
     xml_records.add(xml_record)
     let
-      digital_commons_data = get_digital_commons_title_and_uris(xml_records)
+      digital_commons_data = get_all_digital_commons_authors_and_uris(xml_records)
 
   test "Make sure XML records are properly parsed":
     check "Baggett, Mark Patrick" == digital_commons_data[0][0]
     check "https://trace.tennessee.edu/utk_graddiss/99999999" == digital_commons_data[0][1]
+  
+  test "Make sure we can get all authors and uris from digital commons":
+    check @[("Baggett, Mark Patrick", "https://trace.tennessee.edu/utk_graddiss/99999999")] == get_all_digital_commons_authors_and_uris(xml_records)
