@@ -3,14 +3,19 @@ import oaitools, parsecsv, strformat, times, xmltools, strutils, sequtils, csvto
 
 type Redirect = object
   ## This type captures all metadata for what we consider a redirect.  This is designed to work seamlessly with csvtools.
-  a_type: string
   hash: string
   source: string
   source_options: string
   redirect: string
   redirect_options: string
+  status_code: int
   status: int
 
+type RedirectSuppl = object
+  ## This type caputes all metadata for a supple redirect.
+  source_pattern: string
+  target: string
+  status_code: int
 
 proc newRedirect(source, destination: string): Redirect = 
   ## Constructs a redirect.
@@ -27,7 +32,10 @@ proc newRedirect(source, destination: string): Redirect =
   ##    let my_redirect = newRedirect(source="/islandora/object/utk.ir.td:12280", destination="https://trace.tennessee.edu/utk_gradthes/5482")
   ##    doAssert typeof(my_redirect) is Redirect
   ##
-  return Redirect(a_type: "redirect", hash: $(genUUID()), source: source, source_options: "a:0:{}", redirect: destination, redirect_options: "a:1:{s:5:\"https\";b:1;}", status: 1)
+  return Redirect(hash: $(genUUID()), source: source, source_options: "a:0:{}", redirect: destination, redirect_options: "a:1:{s:5:\"https\";b:1;}", status_code: 301, status: 1)
+
+proc newRedirectSuppl(source, destination: string): RedirectSuppl =
+  return RedirectSuppl(source_pattern: source, target: destination, status_code: 301)
 
 proc get_spaced_name*(name: string): string =
   ## Takes a name part as a string and returns a space then the name part if the string is not empty.
@@ -139,17 +147,44 @@ proc compare_islandora_digital_commons_etds(islandora_etds, digital_commons_reco
     if dc_location != -1:
       result.add(
         newRedirect(
-          islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu", ""),
+          islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu/", ""),
           digital_commons_records[dc_location][1]
-          )
         )
+      )
+      result.add(
+        newRedirect(
+          fmt"{islandora_etds[islandora_titles.find(title)][1]}/datastream/PDF".replace("https://trace.utk.edu/", ""),
+          digital_commons_records[dc_location][1]
+        )
+      )
+      result.add(
+        newRedirect(
+          fmt"{islandora_etds[islandora_titles.find(title)][1]}/datastream/PDF/download/citation.pdf".replace("https://trace.utk.edu/", ""),
+          digital_commons_records[dc_location][1]
+        )
+      )
     else:
       result.add(
         newRedirect(
-          islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu", ""),
+          islandora_etds[islandora_titles.find(title)][1].replace("https://trace.utk.edu/", ""),
            "Missing"
           )
         )
+
+proc generate_suppl_redirects(islandora_etds, digital_commons_records: seq[(string, string)]): seq[RedirectSuppl] =
+  let
+    islandora_titles = islandora_etds.mapIt(it[0])
+    digital_commons_titles = digital_commons_records.mapIt(it[0])
+  for title in islandora_titles:
+    let 
+      dc_location = digital_commons_titles.find(title)
+    if dc_location != -1:
+      result.add(
+        newRedirectSuppl(
+          fmt"{islandora_etds[islandora_titles.find(title)][1]}/datastream/SUPPL_*".replace("https://trace.utk.edu/", ""),
+          digital_commons_records[dc_location][1]
+        )
+      )
 
 proc compare_and_write_redirects(oai_set: string, output_path:string, theses: seq[(string, string)]): int =
   ## Main procedure used to compare uris and write our csv.
@@ -158,7 +193,13 @@ proc compare_and_write_redirects(oai_set: string, output_path:string, theses: se
       theses,
       get_all_digital_commons_authors_and_uris(get_new_records_from_digital_commons(oai_set))
       )
+    suppl_redirects = generate_suppl_redirects(
+      theses,
+      get_all_digital_commons_authors_and_uris(get_new_records_from_digital_commons(oai_set)
+      )
+    )
   etds_redirects.writeToCsv(output_path, separator='|', quote='\'')
+  suppl_redirects.writeToCsv(output_path.replace(".csv", "_match.csv"), separator='|', quote='\'')
   len(etds_redirects)
 
 when isMainModule:
